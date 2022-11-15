@@ -1,7 +1,6 @@
 using System;
 using System.Numerics;
 using System.Drawing;
-using System.Linq;
 
 namespace tomography
 {
@@ -17,7 +16,8 @@ namespace tomography
         /// Конструктор. Инициализирует MatrixImage с указанным размером.
         /// </summary>
         /// <param name="width">Ширина</param>
-        /// <param name="height">Спектр</param>
+        /// <param name="height">Высота</param>
+        /// <param name="isSpectrum">Спектр?</param>
         public ComplexMatrix(int width, int height, bool isSpectrum = false)
         {
             IsSpectrum = isSpectrum;
@@ -30,6 +30,7 @@ namespace tomography
         /// Конструктор. Создаёт из bitmap.
         /// </summary>
         /// <param name="bitmap"></param>
+        /// /// <param name="isSpectrum">Спектр?</param>
         public ComplexMatrix(Bitmap bitmap, bool isSpectrum = false)
         {
             IsSpectrum = isSpectrum;
@@ -45,65 +46,55 @@ namespace tomography
         /// <summary>
         /// Матрица в виде формате Bitmap. 
         /// </summary>
-        public Bitmap Bitmap
+        public Bitmap GetBitmap()
         {
-            get
-            {
-                var bmp = new Bitmap(Width, Height);
-                var matRgb = MatrixRgb;
+            var bmp = new Bitmap(Width, Height);
+            var matRgb = this.GetMatrixRgb();
 
-                for (var i = 0; i < Width; i++)
-                    for (var j = 0; j < Height; j++)
-                        bmp.SetPixel(i, j, Color.FromArgb(matRgb[i][j], matRgb[i][j], matRgb[i][j]));
+            for (var i = 0; i < Width; i++)
+            for (var j = 0; j < Height; j++)
+                bmp.SetPixel(i, j, Color.FromArgb(matRgb[i][j], matRgb[i][j], matRgb[i][j]));
 
-                return bmp;
-            }
+            return bmp;
         }
 
         /// <summary>
         /// Отнормализованная матрица со значенияими в пределах от 0 до 255.  
         /// </summary>
-        public byte[][] MatrixRgb
+        public byte[][] GetMatrixRgb()
         {
-            get
+            var max = double.MinValue;
+            for (var i = 0; i < Width; i++)
+            for (var j = 0; j < Height; j++)
+                max = Math.Max(max, Matrix[i][j].Magnitude);
+
+            var normMatrix = new double[Width][];
+            var matrixRgb = new byte[Width][];
+            for (var i = 0; i < Width; i++)
             {
-                double max = 0;
-                for (var i = 0; i < Width; i++)
-                    if (Matrix[i].Max(j => j.Magnitude) > max)
-                        max = Matrix[i].Max(j => j.Magnitude);
-
-                var normMatrix = new double[Width][];
-                var matrixRgb = new byte[Width][];
-                for (var i = 0; i < Width; i++)
-                {
-                    normMatrix[i] = new double[Height];
-                    matrixRgb[i] = new byte[Height];
-                    for (var j = 0; j < Height; j++)
-                        normMatrix[i][j] = Matrix[i][j].Magnitude / max * 255;
-                }
-
-                if (!IsSpectrum)
-                    for (var i = 0; i < Width; i++)
-                        for (var j = 0; j < Height; j++)
-                            matrixRgb[i][j] = (byte)normMatrix[i][j];
-                else
-                {
-                    double logMax = 0;
-                    for (var i = 0; i < Width; i++)
-                        for (var j = 0; j < Height; j++)
-                        {
-                            var value = Math.Sqrt(Math.Log(1 + normMatrix[i][j]));
-                            if (value > logMax)
-                                logMax = value;
-                        }
-
-                    for (var i = 0; i < Width; i++)
-                        for (var j = 0; j < Height; j++)
-                            matrixRgb[i][j] = (byte)(Math.Sqrt(Math.Log(1 + normMatrix[i][j])) / logMax * 255);
-                }
-
-                return matrixRgb;
+                normMatrix[i] = new double[Height];
+                matrixRgb[i] = new byte[Height];
+                for (var j = 0; j < Height; j++)
+                    normMatrix[i][j] = Matrix[i][j].Magnitude / max * 255;
             }
+
+            if (!IsSpectrum)
+                for (var i = 0; i < Width; i++)
+                for (var j = 0; j < Height; j++)
+                    matrixRgb[i][j] = (byte)normMatrix[i][j];
+            else
+            {
+                var logMax = double.MinValue;
+                for (var i = 0; i < Width; i++)
+                for (var j = 0; j < Height; j++)
+                    logMax = Math.Max(logMax, Math.Sqrt(Math.Log(1 + normMatrix[i][j])));
+
+                for (var i = 0; i < Width; i++)
+                for (var j = 0; j < Height; j++)
+                    matrixRgb[i][j] = (byte)(Math.Sqrt(Math.Log(1 + normMatrix[i][j])) / logMax * 255);
+            }
+
+            return matrixRgb;
         }
     }
 }

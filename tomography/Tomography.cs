@@ -1,73 +1,87 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Numerics;
 
 namespace tomography
 {
     public class Tomography
     {
-        public int Width => InitMatrix.Width;
-        public int Height => InitMatrix.Height;
-
         public ComplexMatrix InitMatrix;
         public ComplexMatrix IntensityMatrix;
-        public ComplexMatrix SpectrumMatrix;
+        public ComplexMatrix FftMatrix;
+        public ComplexMatrix RotatedFftMatrix;
+        public ComplexMatrix RestoredMatrix;
+        public Bitmap InitImage;
+        public Bitmap RestoredImage;
 
-        private double DeltaAngle => 2 * Math.PI / _countIntesity;
-        private int _countIntesity;
+        private int _width;
+        private int _height;
+        private int _countSensor;
+        private double DeltaAngle => 2 * Math.PI / _countSensor;
 
-        private int _oldWidth;
-        private int _oldHeight;
-
-        public Tomography(Bitmap bitmap, int width, int height, int countIntesity, int countSensor)
+        public Tomography(Bitmap bitmap, int width, int height, int countSensor)
         {
-            _oldWidth = bitmap.Width;
-            _oldHeight = bitmap.Height;
-            _countIntesity = countIntesity;
+            _width = width;
+            _height = height;
+            _countSensor = countSensor;
+            
+            var oldWidth = bitmap.Width;
+            var oldHeight = bitmap.Height;
 
-            var newBitmap = ConvertToHalftone(Interpolation.BilinearInterpolation(bitmap, width, height));
-            InitMatrix = new ComplexMatrix(newBitmap);
+            InitImage = ConvertToHalftone(bitmap);
+            InitMatrix = new ComplexMatrix(Interpolation.BilinearInterpolation(InitImage, width, height));
+            IntensityMatrixCalculation();
+            FftMatrixCalculation();
+            RotatedFftMatrixCalculation();
+            RestoredMatrix = Fourier.FFT_2D(RotatedFftMatrix, false);
+            RestoredImage = Interpolation.BilinearInterpolation(RestoredMatrix.GetBitmap(), oldWidth, oldHeight);
+
         }
 
-        public void IntensityMatrixCalculation()
+        private void IntensityMatrixCalculation()
         {
-            IntensityMatrix = new ComplexMatrix(_countIntesity, Height);
-
-            for (var k = 0; k < _countIntesity; k++)
+            IntensityMatrix = new ComplexMatrix(_countSensor, _height);
+            for (var k = 0; k < _countSensor; k++)
             {
-                var angle =  DeltaAngle * k;
-                for (var i = 0; i < Height; i++)
-                for (var j = 0; j < Width; j++)
+                var angle = DeltaAngle * k;
+                for (var i = 0; i < _height; i++)
+                for (var j = 0; j < _width; j++)
                 {
-                    var x = (int)(j * Math.Cos(angle) - i * Math.Sin(angle));
-                    var y = (int)(j * Math.Sin(angle) + i * Math.Cos(angle));
-                    if (x >= 0 && y >= 0 && x < Width && y < Height)
+                    var x = (int)((j - _width >> 1) * Math.Cos(angle) - (i - _height >> 1) * Math.Sin(angle)) + _width >> 1;
+                    var y = (int)((j - _width >> 1) * Math.Sin(angle) + (i - _height >> 1) * Math.Cos(angle)) + _height >> 1;
+                    if (x >= 0 && y >= 0 && x < _width && y < _height)
                         IntensityMatrix.Matrix[k][i] += InitMatrix.Matrix[x][y];
                 }
             }
         }
-
-        public static Bitmap RotateImage(Bitmap bitmap, double angle)
+        
+        private void FftMatrixCalculation()
         {
-            var width = bitmap.Width;
-            var height = bitmap.Height;
-
-            var result = new Bitmap(width, height);
-            angle = Math.PI * angle / 180;
-            for (var i = 0; i < width; i++)
+            FftMatrix = new ComplexMatrix(_countSensor, _height, true);
+            for (var k = 0; k < _countSensor; k++)
             {
-                for (var j = 0; j < height; j++)
+                var fftResult = Fourier.FFT(IntensityMatrix.Matrix[k], true);
+                for (var i = 0; i < _height >> 1; i++)
                 {
-                    var x = (int)(i * Math.Cos(angle) - j * Math.Sin(angle));
-                    var y = (int)(i * Math.Sin(angle) + j * Math.Cos(angle));
-                    if (x >= 0 && y >= 0 && x < width && y < height)
-                        result.SetPixel(i, j, bitmap.GetPixel(x, y));
+                    FftMatrix.Matrix[k][i] = fftResult[i + _height >> 1];
+                    FftMatrix.Matrix[k][i + _height >> 1] = fftResult[i];
                 }
             }
+        }
 
-            return result;
+        private void RotatedFftMatrixCalculation()
+        {
+            RotatedFftMatrix = new ComplexMatrix(_width, _height, true);
+            for (var k = 0; k < _width; k++)
+            {
+                var angle = -DeltaAngle * k;
+                for (var i = 0; i < _height; i++)
+                {
+                    var x = (int)(-(i - _height >> 1) * Math.Sin(angle)) + _height >> 1;
+                    var y = (int)((i - _height >> 1) * Math.Cos(angle)) + _height >> 1;
+                    if (x >= 0 && y >= 0 && x < _width && y < _height)
+                        RotatedFftMatrix.Matrix[y][x] += FftMatrix.Matrix[k][i];
+                }
+            }
         }
 
         /// <summary>

@@ -8,8 +8,6 @@ namespace tomography
     /// </summary>
     public static class Fourier
     {
-        public const double DoublePi = 2 * Math.PI;
-
         /// <summary>
         /// Быстрое преобразование фурье.
         /// </summary>
@@ -22,9 +20,8 @@ namespace tomography
             var halfSize = frame.Length >> 1;
             var fullSize = frame.Length;
 
-            var arg = direct ? -DoublePi / fullSize : DoublePi / fullSize;
-            var omegaPowBase = Complex.Exp(arg);
-            // var omegaPowBase = new Complex(Math.Cos(arg), Math.Sin(arg));
+            var arg = direct ? -2 * Math.PI / fullSize : 2 * Math.PI / fullSize;
+            var omegaPowBase = new Complex(Math.Cos(arg), Math.Sin(arg));
             var omega = Complex.One;
             var result = new Complex[fullSize];
 
@@ -47,7 +44,7 @@ namespace tomography
             yBottom = FFT(yBottom, direct);
             for (var i = 0; i < halfSize; i++)
             {
-                var j = i << 1; // i = 2*j;
+                var j = i << 1;
                 result[j] = yTop[i];
                 result[j + 1] = yBottom[i];
             }
@@ -65,16 +62,16 @@ namespace tomography
         {
             var width = matrix.Width;
             var height = matrix.Height;
-            var result = new ComplexMatrix(width, height);
+            var result = new ComplexMatrix(width, height, direct);
             
-            //if (!direct) matrix = AngularTransform(matrix);
+            // if (!direct) matrix = AngularTransform(matrix);
             for (var i = 0; i < width; i++)
                 result.Matrix[i] = FFT(matrix.Matrix[i], direct);
             result = Transform(result);
             for (var i = 0; i < height; i++)
                 result.Matrix[i] = FFT(result.Matrix[i], direct);
             result = Transform(result);
-            //if (direct) result = AngularTransform(result);
+            // if (direct) result = AngularTransform(result);
 
             if (!direct)
                 for (var i = 0; i < width; i++)
@@ -93,7 +90,7 @@ namespace tomography
         {
             var width = init.Width;
             var height = init.Height;
-            var result = new ComplexMatrix(height, width);
+            var result = new ComplexMatrix(height, width, init.IsSpectrum);
             
             for (var i = 0; i < height; i++)
             for (var j = 0; j < width; j++)
@@ -111,7 +108,7 @@ namespace tomography
             var height = spectrum.Height;
             var halfWidth = width >> 1;
             var halfHeight = height >> 1;
-            var result = new ComplexMatrix(width, height);
+            var result = new ComplexMatrix(width, height, spectrum.IsSpectrum);
 
             for (var i = 0; i < halfWidth; i++)
             for (var j = 0; j < halfHeight; j++)
