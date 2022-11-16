@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Drawing;
+using System.Collections.Generic;
 
 namespace tomography
 {
     public class Tomography
     {
         public ComplexMatrix InitMatrix;
+        public List<ComplexMatrix> RotatedMatrixList;
         public ComplexMatrix IntensityMatrix;
         public ComplexMatrix FftMatrix;
         public ComplexMatrix RotatedFftMatrix;
@@ -23,7 +25,7 @@ namespace tomography
             _width = width;
             _height = height;
             _countSensor = countSensor;
-            
+
             var oldWidth = bitmap.Width;
             var oldHeight = bitmap.Height;
 
@@ -34,36 +36,46 @@ namespace tomography
             RotatedFftMatrixCalculation();
             RestoredMatrix = Fourier.FFT_2D(RotatedFftMatrix, false);
             RestoredImage = Interpolation.BilinearInterpolation(RestoredMatrix.GetBitmap(), oldWidth, oldHeight);
-
         }
 
         private void IntensityMatrixCalculation()
         {
             IntensityMatrix = new ComplexMatrix(_countSensor, _height);
+            RotatedMatrixList = new List<ComplexMatrix>();
+
+            var halfWidth = _width >> 1;
+            var halfHeight = _height >> 1;
+
             for (var k = 0; k < _countSensor; k++)
             {
                 var angle = DeltaAngle * k;
+                var cos = Math.Cos(angle);
+                var sin = Math.Sin(angle);
+                RotatedMatrixList.Add(new ComplexMatrix(_width, _height));
                 for (var i = 0; i < _height; i++)
                 for (var j = 0; j < _width; j++)
                 {
-                    var x = (int)((j - _width >> 1) * Math.Cos(angle) - (i - _height >> 1) * Math.Sin(angle)) + _width >> 1;
-                    var y = (int)((j - _width >> 1) * Math.Sin(angle) + (i - _height >> 1) * Math.Cos(angle)) + _height >> 1;
+                    var x = (int)((j - halfWidth) * cos - (i - halfHeight) * sin) + halfWidth;
+                    var y = (int)((j - halfWidth) * sin + (i - halfHeight) * cos) + halfHeight;
                     if (x >= 0 && y >= 0 && x < _width && y < _height)
-                        IntensityMatrix.Matrix[k][i] += InitMatrix.Matrix[x][y];
+                        IntensityMatrix.Matrix[k][i] += RotatedMatrixList[k].Matrix[j][i] = InitMatrix.Matrix[x][y];
                 }
             }
         }
-        
+
         private void FftMatrixCalculation()
         {
             FftMatrix = new ComplexMatrix(_countSensor, _height, true);
+
+            var halfHeight = _height >> 1;
+
             for (var k = 0; k < _countSensor; k++)
             {
                 var fftResult = Fourier.FFT(IntensityMatrix.Matrix[k], true);
-                for (var i = 0; i < _height >> 1; i++)
+                for (var i = 0; i < halfHeight; i++)
                 {
-                    FftMatrix.Matrix[k][i] = fftResult[i + _height >> 1];
-                    FftMatrix.Matrix[k][i + _height >> 1] = fftResult[i];
+                    FftMatrix.Matrix[k][i] = fftResult[i + halfHeight];
+                    FftMatrix.Matrix[k][i + halfHeight] = fftResult[i];
                 }
             }
         }
@@ -71,15 +83,19 @@ namespace tomography
         private void RotatedFftMatrixCalculation()
         {
             RotatedFftMatrix = new ComplexMatrix(_width, _height, true);
+
+            var halfWidth = _width >> 1;
+            var halfHeight = _height >> 1;
+
             for (var k = 0; k < _width; k++)
             {
                 var angle = -DeltaAngle * k;
                 for (var i = 0; i < _height; i++)
                 {
-                    var x = (int)(-(i - _height >> 1) * Math.Sin(angle)) + _height >> 1;
-                    var y = (int)((i - _height >> 1) * Math.Cos(angle)) + _height >> 1;
+                    var x = (int)(-(i - halfWidth) * Math.Sin(angle)) + halfWidth;
+                    var y = (int)((i - halfHeight) * Math.Cos(angle)) + halfHeight;
                     if (x >= 0 && y >= 0 && x < _width && y < _height)
-                        RotatedFftMatrix.Matrix[y][x] += FftMatrix.Matrix[k][i];
+                        RotatedFftMatrix.Matrix[y][x] += FftMatrix.Matrix[k][i] / _countSensor;
                 }
             }
         }
