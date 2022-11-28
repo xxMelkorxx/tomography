@@ -64,7 +64,7 @@ namespace tomography
             var height = matrix.Height;
             var result = new ComplexMatrix(width, height, direct);
             
-            // if (!direct) matrix = AngularTransform(matrix);
+            //if (!direct) matrix = AngularTransform(matrix);
             for (var i = 0; i < width; i++)
                 result.Matrix[i] = FFT(matrix.Matrix[i], direct);
             result = Transform(result);
