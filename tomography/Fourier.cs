@@ -63,7 +63,7 @@ namespace tomography
             var width = matrix.Width;
             var height = matrix.Height;
             var result = new ComplexMatrix(width, height, direct);
-            
+
             //if (!direct) matrix = AngularTransform(matrix);
             for (var i = 0; i < width; i++)
                 result.Matrix[i] = FFT(matrix.Matrix[i], direct);
@@ -91,11 +91,11 @@ namespace tomography
             var width = init.Width;
             var height = init.Height;
             var result = new ComplexMatrix(height, width, init.IsSpectrum);
-            
+
             for (var i = 0; i < height; i++)
             for (var j = 0; j < width; j++)
                 result.Matrix[i][j] = init.Matrix[j][i];
-            
+
             return result;
         }
 

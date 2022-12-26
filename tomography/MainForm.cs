@@ -16,7 +16,7 @@ namespace tomography
         {
             InitializeComponent();
         }
-        
+
         private void OnLoadMainForm(object sender, EventArgs e)
         {
             trackBar_rotate.Maximum = Size - 1;
@@ -45,8 +45,8 @@ namespace tomography
             };
             if (dialog.ShowDialog() == DialogResult.OK)
             {
-                //try
-                //{
+                try
+                {
                     _initImage = new Bitmap(dialog.FileName);
                     _tomography = new Tomography(_initImage, Size, Size);
                     pB_initImage.Image = _tomography.RotatedMatrixList[0].GetBitmap();
@@ -58,16 +58,16 @@ namespace tomography
 
                     _max = double.MinValue;
                     for (var i = 0; i < Size; i++)
-                        for (var j = 0; j < Size; j++)
-                            _max = Math.Max(_tomography.IntensityMatrix.Matrix[i][j].Magnitude, _max);
+                    for (var j = 0; j < Size; j++)
+                        _max = Math.Max(_tomography.IntensityMatrix.Matrix[i][j].Magnitude, _max);
                     chart_intensity.Series[0].Points.Clear();
                     for (var i = 0; i < Size; i++)
                         chart_intensity.Series[0].Points.AddXY(_tomography.IntensityMatrix.Matrix[0][Size - 1 - i].Magnitude / _max, i);
-                //}
-                //catch (Exception exception)
-                //{
-                //    MessageBox.Show(exception.Message, "Ошибка!");
-                //}
+                }
+                catch (Exception exception)
+                {
+                    MessageBox.Show(exception.Message, "Ошибка!");
+                }
             }
         }
 

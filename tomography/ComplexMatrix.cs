@@ -30,7 +30,7 @@ namespace tomography
         /// Конструктор. Создаёт из bitmap.
         /// </summary>
         /// <param name="bitmap"></param>
-        /// /// <param name="isSpectrum">Спектр?</param>
+        /// <param name="isSpectrum">Спектр?</param>
         public ComplexMatrix(Bitmap bitmap, bool isSpectrum = false)
         {
             IsSpectrum = isSpectrum;
